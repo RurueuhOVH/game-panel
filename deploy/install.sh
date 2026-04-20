@@ -5,9 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deploy/lib/common.sh
 . "$SCRIPT_DIR/lib/common.sh"
 
-DEFAULT_GITHUB_REPO_URL="https://github.com/ovh/game-panel.git"
-DEFAULT_GITHUB_REPO_BRANCH="main"
-
 escape_env_value() {
   local value="$1"
   value="${value//\\/\\\\}"
@@ -187,51 +184,6 @@ verify_domain_points_to_machine() {
   log "Domain/IP verification passed for '$domain'."
 }
 
-resolve_source_root() {
-  local local_source_root="$1"
-  local source_mode="${GP_SOURCE_MODE:-github}"
-
-  case "$source_mode" in
-    local)
-      [[ -d "$local_source_root/backend" ]] || die "Local source not found: $local_source_root/backend"
-      [[ -d "$local_source_root/frontend" ]] || die "Local source not found: $local_source_root/frontend"
-      [[ -d "$local_source_root/deploy" ]] || die "Local source not found: $local_source_root/deploy"
-      printf '%s' "$local_source_root"
-      return
-      ;;
-    github)
-      is_true "${GP_ENABLE_GITHUB_FETCH:-1}" || die \
-        "GitHub fetch is disabled by GP_ENABLE_GITHUB_FETCH=0. Use '--local' to install from local sources."
-
-      require_cmd git
-
-      local repo_url="$DEFAULT_GITHUB_REPO_URL"
-      local repo_branch="${GP_REPO_BRANCH:-$DEFAULT_GITHUB_REPO_BRANCH}"
-      local checkout_dir="${GP_CHECKOUT_DIR:-/opt/gamepanel-src}"
-
-      if [[ -d "$checkout_dir/.git" ]]; then
-        log "Updating repository in $checkout_dir..."
-        git -C "$checkout_dir" fetch --all --prune
-        git -C "$checkout_dir" checkout "$repo_branch"
-        git -C "$checkout_dir" pull --ff-only origin "$repo_branch"
-      else
-        log "Cloning repository $repo_url (branch: $repo_branch) into $checkout_dir..."
-        mkdir -p "$(dirname "$checkout_dir")"
-        git clone --branch "$repo_branch" "$repo_url" "$checkout_dir"
-      fi
-
-      [[ -d "$checkout_dir/backend" ]] || die "Fetched source is missing backend directory: $checkout_dir/backend"
-      [[ -d "$checkout_dir/frontend" ]] || die "Fetched source is missing frontend directory: $checkout_dir/frontend"
-      [[ -d "$checkout_dir/deploy" ]] || die "Fetched source is missing deploy directory: $checkout_dir/deploy"
-      printf '%s' "$checkout_dir"
-      return
-      ;;
-    *)
-      die "Invalid source mode: $source_mode (allowed: local, github)"
-      ;;
-  esac
-}
-
 compose_cmd() {
   if docker compose version >/dev/null 2>&1; then
     docker compose \
@@ -257,18 +209,6 @@ compose_cmd() {
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --source-mode)
-        GP_SOURCE_MODE="${2:-}"
-        shift 2
-        ;;
-      --local)
-        GP_SOURCE_MODE="local"
-        shift
-        ;;
-      --github)
-        GP_SOURCE_MODE="github"
-        shift
-        ;;
       --non-interactive)
         GP_NON_INTERACTIVE="1"
         shift
@@ -276,14 +216,6 @@ parse_args() {
       --skip-domain-ip-check)
         GP_SKIP_DOMAIN_IP_CHECK="1"
         shift
-        ;;
-      --repo-branch)
-        GP_REPO_BRANCH="${2:-}"
-        shift 2
-        ;;
-      --checkout-dir)
-        GP_CHECKOUT_DIR="${2:-}"
-        shift 2
         ;;
       --domain)
         GP_DOMAIN="${2:-}"
@@ -743,8 +675,8 @@ main() {
   parse_args "$@"
   ensure_root "$@"
   require_cmd systemctl
-  GP_SOURCE_MODE="${GP_SOURCE_MODE:-github}"
   LOCAL_SOURCE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+  require_local_source_tree "$LOCAL_SOURCE_ROOT"
 
   APP_ROOT="${GP_APP_ROOT:-/opt/gamepanel}"
   APP_GROUP="${GP_APP_GROUP:-gamepanel}"
@@ -771,8 +703,8 @@ main() {
 
   verify_domain_points_to_machine "$DOMAIN"
 
-  log "Resolving source mode: ${GP_SOURCE_MODE}"
-  SOURCE_ROOT="$(resolve_source_root "$LOCAL_SOURCE_ROOT")"
+  log "Using local source tree from $LOCAL_SOURCE_ROOT."
+  SOURCE_ROOT="$LOCAL_SOURCE_ROOT"
   APP_VERSION="$(read_app_version "$SOURCE_ROOT")"
 
   log "Installing Docker and Compose..."

@@ -216,11 +216,16 @@ Your GamePanel will then be available at:
 From your Linux shell, update your current installation with:
 
 ```bash
+cd game-panel
+git pull --ff-only origin main
 sudo bash ./deploy/update.sh
 ```
 
-If you need to update from a specific branch, use:
+If you need to update from another branch, switch to it first and then pull:
 
 ```bash
-sudo GP_REPO_BRANCH="main" bash ./deploy/update.sh
+cd game-panel
+git checkout <branch>
+git pull --ff-only origin <branch>
+sudo bash ./deploy/update.sh
 ```

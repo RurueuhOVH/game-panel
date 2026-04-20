@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 log() {
-  printf '[INFO] %s\n' "$*"
+  printf '[INFO] %s\n' "$*" >&2
 }
 
 warn() {
@@ -11,6 +11,12 @@ warn() {
 die() {
   printf '[ERROR] %s\n' "$*" >&2
   exit 1
+}
+
+require_local_source_tree() {
+  local root="$1"
+  [[ -d "$root/backend" && -d "$root/frontend" && -d "$root/deploy" ]] || \
+    die "This script must be run from the root of a cloned game-panel repository. Missing expected directories under: $root"
 }
 
 require_cmd() {
