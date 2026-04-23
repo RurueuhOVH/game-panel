@@ -1,14 +1,13 @@
 ARG NODE_IMAGE=node:20.20.1-alpine3.22
 
-FROM ${NODE_IMAGE} AS deps
-WORKDIR /app/backend
-COPY backend/package*.json ./
-RUN npm ci --include=dev
-
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app/backend
-COPY --from=deps /app/backend/node_modules node_modules
+# Avoid having NODE_ENV=production leak in here and skip devDependencies
+ENV NODE_ENV=development
+COPY backend/package*.json ./
+RUN npm ci --include=dev
 COPY backend ./
+RUN ls -la node_modules/.bin/ | head -20 && node_modules/.bin/tsc --version
 RUN npm run build
 RUN npm prune --omit=dev
 
