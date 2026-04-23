@@ -3,7 +3,7 @@ ARG NODE_IMAGE=node:20.20.1-alpine3.22
 FROM ${NODE_IMAGE} AS deps
 WORKDIR /app/backend
 COPY backend/package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app/backend
