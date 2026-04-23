@@ -5,9 +5,10 @@ WORKDIR /app/backend
 # Avoid having NODE_ENV=production leak in here and skip devDependencies
 ENV NODE_ENV=development
 COPY backend/package*.json ./
-RUN npm ci --include=dev
+RUN npm ci --include=dev --loglevel=info
+RUN echo "=== AFTER npm ci ===" && ls -la && ls node_modules | head && ls -la node_modules/.bin/ | head -20
 COPY backend ./
-RUN ls -la node_modules/.bin/ | head -20 && node_modules/.bin/tsc --version
+RUN echo "=== AFTER COPY backend ./ ===" && ls -la && ls node_modules 2>&1 | head && ls -la node_modules/.bin/ 2>&1 | head -20
 RUN npm run build
 RUN npm prune --omit=dev
 
