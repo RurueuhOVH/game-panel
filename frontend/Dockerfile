@@ -1,8 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-ENV NODE_ENV=development
 COPY frontend/package*.json frontend/
-RUN cd frontend && npm ci --include=dev
+RUN cd frontend && npm ci
 COPY frontend frontend
 ARG VITE_API_BASE_URL
 ARG VITE_DB_API_BASE_URL
